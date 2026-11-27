@@ -1,9 +1,11 @@
 ﻿# Tour 3D da Quadra
 
-Walkthrough 3D da montagem da quadra (PC e celular).
+Walkthrough 3D da montagem da quadra — funciona no computador e no celular.
 
 ## Abrir online
 
-Depois do GitHub Pages: https://posiawagner-prog.github.io/quadra-tour-3d/
+**https://posiawagner-prog.github.io/quadra-tour-3d/**
 
-Arquivo principal: `index.html` (mesmo conteúdo de `quadra-tour-3d.html`).
+## Repositório
+
+https://github.com/posiawagner-prog/quadra-tour-3d
