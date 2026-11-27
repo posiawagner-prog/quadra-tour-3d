@@ -54,6 +54,11 @@
     #cross::after { left: 0; top: 6px; width: 14px; height: 2px; }
     body.preview #blocker { display: none !important; }
     body.walking #cross { opacity: 0.55; }
+    body.recording #hud,
+    body.recording #touch-ui,
+    body.recording #cross,
+    body.recording #blocker { display: none !important; opacity: 0 !important; }
+    #btn-video.recording { background: #c62828; border-color: #c62828; }
 
     /* Controles touch (celular / tablet) */
     #touch-ui {
@@ -145,6 +150,7 @@
       <button type="button" id="btn-orbit">Girar um pouco</button>
       <button type="button" id="btn-led">Olhar o telão</button>
       <button type="button" id="btn-overview">Vista aérea</button>
+      <button type="button" id="btn-video">Gravar vídeo tour</button>
     </div>
   </div>
   <div id="touch-ui">
@@ -181,7 +187,7 @@
     function sw(w) { return w * S; }
 
     const canvas = document.getElementById("c");
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
     renderer.shadowMap.enabled = true;
@@ -995,6 +1001,180 @@
     });
     document.getElementById("btn-overview").addEventListener("click", showFullStructure);
     orbitBtn.addEventListener("click", turnALittle);
+
+    // ——— Tour cinematográfico + gravação de vídeo ———
+    let cinematic = false;
+    const videoBtn = document.getElementById("btn-video");
+
+    function sleep(ms) {
+      return new Promise((r) => setTimeout(r, ms));
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function lerpAngle(a, b, t) {
+      let d = b - a;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      return a + d * t;
+    }
+
+    async function animateCameraTo(xSvg, zSvg, y, lookX, lookZ, lookY, durationMs) {
+      const from = camera.position.clone();
+      const to = new THREE.Vector3(sx(xSvg), y, sz(zSvg));
+      const lookFrom = new THREE.Vector3();
+      lookFrom.set(
+        from.x - Math.sin(yaw) * Math.cos(pitch),
+        from.y + Math.sin(pitch),
+        from.z - Math.cos(yaw) * Math.cos(pitch)
+      );
+      // Derive current look target roughly from yaw/pitch
+      const startYaw = yaw;
+      const startPitch = pitch;
+      const endPos = to;
+      // Temporary look to compute end yaw/pitch
+      const dx = sx(lookX) - to.x;
+      const dy = lookY - to.y;
+      const dz = sz(lookZ) - to.z;
+      const endYaw = Math.atan2(-dx, -dz);
+      const endPitch = Math.atan2(dy, Math.hypot(dx, dz));
+      const t0 = performance.now();
+      await new Promise((resolve) => {
+        function step(now) {
+          const u = Math.min(1, (now - t0) / durationMs);
+          const e = easeInOut(u);
+          camera.position.lerpVectors(from, endPos, e);
+          yaw = lerpAngle(startYaw, endYaw, e);
+          pitch = lerp(startPitch, endPitch, e);
+          applyLook();
+          if (u < 1) requestAnimationFrame(step);
+          else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    async function spinYaw(deltaRad, durationMs) {
+      const startYaw = yaw;
+      const t0 = performance.now();
+      await new Promise((resolve) => {
+        function step(now) {
+          const u = Math.min(1, (now - t0) / durationMs);
+          const e = easeInOut(u);
+          yaw = startYaw + deltaRad * e;
+          applyLook();
+          if (u < 1) requestAnimationFrame(step);
+          else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    async function runPanoramicTour() {
+      cinematic = true;
+      stopOrbit();
+      turning = false;
+      document.body.classList.add("recording", "preview", "walking");
+      document.getElementById("blocker").style.display = "none";
+      setWalking(true);
+      camera.position.set(sx(111), 1.65, sz(290));
+      lookAtPoint(sx(111), 1.6, sz(180));
+
+      // Entrada → corredor central (mesas dos lados)
+      await animateCameraTo(111, 250, 1.65, 111, 160, 1.5, 4500);
+      await sleep(400);
+      // Olha mesas da esquerda
+      await animateCameraTo(111, 230, 1.65, 70, 210, 1.2, 2200);
+      await sleep(500);
+      // Olha mesas da direita
+      await animateCameraTo(111, 230, 1.65, 155, 210, 1.2, 2200);
+      await sleep(400);
+      // Segue em direção ao telão
+      await animateCameraTo(111, 160, 1.65, 111, 50, 2.2, 5000);
+      await sleep(300);
+      // Buffet (lateral esquerda)
+      await animateCameraTo(55, 70, 1.65, 20, 58, 1.15, 4000);
+      await sleep(700);
+      // Aproxima do buffet
+      await animateCameraTo(40, 58, 1.65, 20, 58, 1.2, 2500);
+      await sleep(900);
+      // Vai ao telão
+      await animateCameraTo(111, 110, 1.7, 111, LED.z + 2, 2.4, 4500);
+      await sleep(800);
+      // 360° lento no centro, altura de pessoa
+      await animateCameraTo(111, 170, 1.65, 111, 100, 1.5, 2500);
+      await sleep(300);
+      await spinYaw(-Math.PI * 2, 12000);
+      await sleep(400);
+      // Vista final do telão
+      await animateCameraTo(111, 140, 1.7, 111, LED.z + 2, 2.4, 3500);
+      await sleep(1000);
+      cinematic = false;
+      document.body.classList.remove("recording");
+    }
+
+    async function recordPanoramicTour() {
+      if (videoBtn.classList.contains("recording")) return null;
+      videoBtn.classList.add("recording");
+      videoBtn.textContent = "Gravando…";
+
+      const stream = canvas.captureStream(30);
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+          ? "video/webm;codecs=vp8"
+          : "video/webm";
+      const chunks = [];
+      const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size) chunks.push(e.data);
+      };
+      const stopped = new Promise((resolve) => {
+        recorder.onstop = resolve;
+      });
+      recorder.start(200);
+
+      try {
+        await runPanoramicTour();
+      } finally {
+        if (recorder.state !== "inactive") recorder.stop();
+        await stopped;
+        stream.getTracks().forEach((t) => t.stop());
+        videoBtn.classList.remove("recording");
+        videoBtn.textContent = "Gravar vídeo tour";
+      }
+
+      const blob = new Blob(chunks, { type: mime });
+      window.__lastTourBlob = blob;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "quadra-tour-panoramico.webm";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      return blob.size;
+    }
+
+    window.recordPanoramicTour = recordPanoramicTour;
+    window.runPanoramicTour = runPanoramicTour;
+    videoBtn.addEventListener("click", () => {
+      recordPanoramicTour().catch((err) => {
+        console.error(err);
+        videoBtn.classList.remove("recording");
+        videoBtn.textContent = "Gravar vídeo tour";
+        document.body.classList.remove("recording");
+        cinematic = false;
+        alert("Não foi possível gravar o vídeo neste navegador.");
+      });
+    });
+
+    // Durante o tour cinematográfico, não mexer com WASD/joystick
+    const _origWalkingCheck = () => walking;
+    void _origWalkingCheck;
     document.getElementById("touch-turn").addEventListener("pointerdown", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1029,7 +1209,7 @@
         if (turnT >= 1) stopOrbit();
       }
 
-      if (walking) {
+      if (walking && !cinematic && !turning) {
         const usingJoy = Math.hypot(joy.x, joy.y) > 0.08;
         const speed = (keys.u || keys.d || camera.position.y > 3 || usingJoy) ? 9 : 5.5;
         forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
