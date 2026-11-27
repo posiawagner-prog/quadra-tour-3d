@@ -792,11 +792,11 @@
       scene.add(t);
     });
 
-    // Buffet: 8 mesas coladas só na grade de trás (afastadas da grade lateral),
+    // Buffet: 8 mesas na coluna esquerda, 1 m afastadas da grade de trás,
     // parte atrás e parte na frente do telão
     {
-      const buffetX = 16.499; // alinhada à coluna esquerda, longe da grade lateral
-      const buffetStartZ = COURT.z + 0.9; // encostada só na grade de trás
+      const buffetX = 16.499;
+      const buffetStartZ = COURT.z + (1 / S); // 1 metro da grade de trás
       for (let i = 0; i < 8; i++) {
         const t = tablePrototype.clone(true);
         const zSvg = buffetStartZ + i * TABLE_SVG;
