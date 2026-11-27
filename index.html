@@ -792,6 +792,18 @@
       scene.add(t);
     });
 
+    // Buffet: 8 mesas coladas no canto esquerdo, à frente do telão
+    {
+      const buffetStartX = 12.5;
+      const buffetZ = 55.5;
+      for (let i = 0; i < 8; i++) {
+        const t = tablePrototype.clone(true);
+        const xSvg = buffetStartX + i * TABLE_SVG;
+        t.position.set(sx(xSvg + TABLE_SVG / 2), 0, sz(buffetZ + TABLE_SVG / 2));
+        scene.add(t);
+      }
+    }
+
     // Movement — teclado (PC) + joystick/botões (celular)
     const keys = { f: false, b: false, l: false, r: false, u: false, d: false };
     const onKey = (e, down) => {
