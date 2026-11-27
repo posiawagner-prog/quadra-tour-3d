@@ -399,6 +399,13 @@
       const gateRight = sx(GATE.x + GATE.w);
       const gatePad = 0.12;
 
+      // Abertura na grade esquerda — entrada do buffet (como na foto)
+      const buffetGatePad = 0.08;
+      const buffetGateZ0 = sz(COURT.z + (1 / S)); // início das mesas do buffet
+      const buffetGateZ1 = sz(COURT.z + (1 / S) + 24); // ~1,2 m de vão
+      const buffetOpenA = Math.min(buffetGateZ0, buffetGateZ1);
+      const buffetOpenB = Math.max(buffetGateZ0, buffetGateZ1);
+
       const barGeo = new THREE.CylinderGeometry(barR, barR, fenceH - bottomY - 0.02, 6);
       const postGeo = new THREE.BoxGeometry(postT, postH, postT);
 
@@ -466,7 +473,9 @@
       const B = halfD + inset;
 
       fenceRun(L, T, R, T);
-      fenceRun(L, T, L, B);
+      // Grade esquerda com abertura na entrada do buffet
+      fenceRun(L, T, L, buffetOpenA - buffetGatePad);
+      fenceRun(L, buffetOpenB + buffetGatePad, L, B);
       fenceRun(R, T, R, B);
       fenceRun(L, B, gateLeft - gatePad, B);
       fenceRun(gateRight + gatePad, B, R, B);
