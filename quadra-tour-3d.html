@@ -812,36 +812,51 @@
         scene.add(t);
       }
 
-      // Nome BUFFET em cima das mesas
+      // Nome BUFFET bem grande — um só, atravessando as 8 mesas
       const labelCanvas = document.createElement("canvas");
-      labelCanvas.width = 1024;
-      labelCanvas.height = 256;
+      labelCanvas.width = 2048;
+      labelCanvas.height = 512;
       const lctx = labelCanvas.getContext("2d");
-      lctx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
-      lctx.fillStyle = "#1a1a1a";
-      lctx.font = "bold 160px Arial, Helvetica, sans-serif";
+      lctx.fillStyle = "#c62828";
+      lctx.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
+      lctx.fillStyle = "#ffffff";
+      lctx.strokeStyle = "#111111";
+      lctx.lineWidth = 18;
+      lctx.font = "bold 340px Arial Black, Arial, Helvetica, sans-serif";
       lctx.textAlign = "center";
       lctx.textBaseline = "middle";
+      lctx.strokeText("BUFFET", labelCanvas.width / 2, labelCanvas.height / 2);
       lctx.fillText("BUFFET", labelCanvas.width / 2, labelCanvas.height / 2);
       const labelTex = new THREE.CanvasTexture(labelCanvas);
       labelTex.colorSpace = THREE.SRGBColorSpace;
+      labelTex.anisotropy = 8;
       const labelMat = new THREE.MeshBasicMaterial({
         map: labelTex,
-        transparent: true,
         side: THREE.DoubleSide,
-        depthWrite: false
+        transparent: false
       });
       const buffetLen = sw(8 * TABLE_SVG);
-      const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(Math.min(buffetLen * 0.85, 2.8), 0.42),
-        labelMat
-      );
       const cx = sx(buffetX + TABLE_SVG / 2);
       const cz = sz(buffetStartZ + 4 * TABLE_SVG);
-      label.position.set(cx, tableH + 0.02, cz);
-      label.rotation.x = -Math.PI / 2; // deitado em cima da mesa
-      label.rotation.z = Math.PI / 2; // alinhado ao comprimento das mesas
-      scene.add(label);
+
+      // Faixa deitada em cima de todas as mesas
+      const labelTop = new THREE.Mesh(
+        new THREE.PlaneGeometry(buffetLen * 0.95, tableSize * 0.75),
+        labelMat
+      );
+      labelTop.position.set(cx, tableH + 0.03, cz);
+      labelTop.rotation.x = -Math.PI / 2;
+      labelTop.rotation.z = Math.PI / 2;
+      scene.add(labelTop);
+
+      // Placa em pé (visível ao andar na altura dos olhos)
+      const labelStand = new THREE.Mesh(
+        new THREE.PlaneGeometry(buffetLen * 0.92, 0.7),
+        labelMat.clone()
+      );
+      labelStand.position.set(cx + tableSize * 0.15, tableH + 0.38, cz);
+      labelStand.rotation.y = Math.PI / 2; // de frente para o centro da quadra
+      scene.add(labelStand);
     }
 
     // Movement — teclado (PC) + joystick/botões (celular)
