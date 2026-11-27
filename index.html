@@ -792,14 +792,16 @@
       scene.add(t);
     });
 
-    // Buffet: 8 mesas coladas bem próximas do portão (grade de trás)
+    // Buffet: 8 mesas coladas na mesma coluna da esquerda (x = 16.499),
+    // em sequência antes das mesas que já existem nesse lado
     {
-      const buffetZ = GATE.z - TABLE_SVG - 1.5; // logo à frente do portão
-      const buffetStartX = GATE.x - 8 * TABLE_SVG; // alinhadas à esquerda do vão
+      const leftX = 16.499;
+      const firstExistingZ = 95.643;
+      const buffetStartZ = firstExistingZ - 8 * TABLE_SVG; // 39.643
       for (let i = 0; i < 8; i++) {
         const t = tablePrototype.clone(true);
-        const xSvg = buffetStartX + i * TABLE_SVG;
-        t.position.set(sx(xSvg + TABLE_SVG / 2), 0, sz(buffetZ + TABLE_SVG / 2));
+        const zSvg = buffetStartZ + i * TABLE_SVG;
+        t.position.set(sx(leftX + TABLE_SVG / 2), 0, sz(zSvg + TABLE_SVG / 2));
         scene.add(t);
       }
     }
