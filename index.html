@@ -837,41 +837,24 @@
       const buffetLen = sw(8 * TABLE_SVG);
       const cx = sx(buffetX + TABLE_SVG / 2);
       const cz = sz(buffetStartZ + 4 * TABLE_SVG);
-      const z0 = sz(buffetStartZ + TABLE_SVG / 2);
-      const z1 = sz(buffetStartZ + 7.5 * TABLE_SVG);
 
-      function makeBuffetSign(w, h) {
-        return new THREE.Mesh(new THREE.PlaneGeometry(w, h), labelMat.clone());
-      }
-
-      // Em cima das mesas (vista de cima / olhando para baixo)
-      const labelTop = makeBuffetSign(buffetLen * 0.96, tableSize * 0.9);
-      labelTop.position.set(cx, tableH + 0.04, cz);
-      labelTop.rotation.x = -Math.PI / 2;
-      labelTop.rotation.z = Math.PI / 2;
-      scene.add(labelTop);
-
-      // Placas laterais longas (ao andar pela quadra)
-      const sideH = 0.85;
+      // Somente placas laterais maiores (visíveis ao andar)
+      const sideH = 1.05;
       const sideY = tableH + sideH / 2;
-      const sideL = makeBuffetSign(buffetLen * 0.95, sideH);
+      const sideL = new THREE.Mesh(
+        new THREE.PlaneGeometry(buffetLen * 0.98, sideH),
+        labelMat.clone()
+      );
       sideL.position.set(cx + tableSize * 0.52, sideY, cz);
       sideL.rotation.y = Math.PI / 2;
       scene.add(sideL);
-      const sideR = makeBuffetSign(buffetLen * 0.95, sideH);
+      const sideR = new THREE.Mesh(
+        new THREE.PlaneGeometry(buffetLen * 0.98, sideH),
+        labelMat.clone()
+      );
       sideR.position.set(cx - tableSize * 0.52, sideY, cz);
       sideR.rotation.y = -Math.PI / 2;
       scene.add(sideR);
-
-      // Placas nas pontas (ao chegar pelo corredor / grade)
-      const endW = tableSize * 0.95;
-      const endA = makeBuffetSign(endW, sideH);
-      endA.position.set(cx, sideY, z0 - 0.02);
-      scene.add(endA);
-      const endB = makeBuffetSign(endW, sideH);
-      endB.position.set(cx, sideY, z1 + 0.02);
-      endB.rotation.y = Math.PI;
-      scene.add(endB);
     }
 
     // Movement — teclado (PC) + joystick/botões (celular)
