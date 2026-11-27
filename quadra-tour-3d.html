@@ -233,10 +233,9 @@
 
     function startWalkNearEntrance() {
       stopOrbit();
-      camera.position.set(sx(180), 1.65, sz(295));
-      yaw = Math.PI;
-      pitch = 0;
-      applyLook();
+      // Mesma visão da imagem: altura dos olhos no corredor central, olhando o telão
+      camera.position.set(sx(111), 1.65, sz(230));
+      lookAtPoint(sx(111), 2.35, sz(LED.z + LED.d / 2));
       setWalking(true);
     }
 
