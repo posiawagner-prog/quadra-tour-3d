@@ -812,7 +812,7 @@
         scene.add(t);
       }
 
-      // Nome BUFFET bem grande — um só, atravessando as 8 mesas
+      // Nome BUFFET bem grande — um só nas 8 mesas, visível de todos os lados
       const labelCanvas = document.createElement("canvas");
       labelCanvas.width = 2048;
       labelCanvas.height = 512;
@@ -832,31 +832,46 @@
       labelTex.anisotropy = 8;
       const labelMat = new THREE.MeshBasicMaterial({
         map: labelTex,
-        side: THREE.DoubleSide,
-        transparent: false
+        side: THREE.DoubleSide
       });
       const buffetLen = sw(8 * TABLE_SVG);
       const cx = sx(buffetX + TABLE_SVG / 2);
       const cz = sz(buffetStartZ + 4 * TABLE_SVG);
+      const z0 = sz(buffetStartZ + TABLE_SVG / 2);
+      const z1 = sz(buffetStartZ + 7.5 * TABLE_SVG);
 
-      // Faixa deitada em cima de todas as mesas
-      const labelTop = new THREE.Mesh(
-        new THREE.PlaneGeometry(buffetLen * 0.95, tableSize * 0.75),
-        labelMat
-      );
-      labelTop.position.set(cx, tableH + 0.03, cz);
+      function makeBuffetSign(w, h) {
+        return new THREE.Mesh(new THREE.PlaneGeometry(w, h), labelMat.clone());
+      }
+
+      // Em cima das mesas (vista de cima / olhando para baixo)
+      const labelTop = makeBuffetSign(buffetLen * 0.96, tableSize * 0.9);
+      labelTop.position.set(cx, tableH + 0.04, cz);
       labelTop.rotation.x = -Math.PI / 2;
       labelTop.rotation.z = Math.PI / 2;
       scene.add(labelTop);
 
-      // Placa em pé (visível ao andar na altura dos olhos)
-      const labelStand = new THREE.Mesh(
-        new THREE.PlaneGeometry(buffetLen * 0.92, 0.7),
-        labelMat.clone()
-      );
-      labelStand.position.set(cx + tableSize * 0.15, tableH + 0.38, cz);
-      labelStand.rotation.y = Math.PI / 2; // de frente para o centro da quadra
-      scene.add(labelStand);
+      // Placas laterais longas (ao andar pela quadra)
+      const sideH = 0.85;
+      const sideY = tableH + sideH / 2;
+      const sideL = makeBuffetSign(buffetLen * 0.95, sideH);
+      sideL.position.set(cx + tableSize * 0.52, sideY, cz);
+      sideL.rotation.y = Math.PI / 2;
+      scene.add(sideL);
+      const sideR = makeBuffetSign(buffetLen * 0.95, sideH);
+      sideR.position.set(cx - tableSize * 0.52, sideY, cz);
+      sideR.rotation.y = -Math.PI / 2;
+      scene.add(sideR);
+
+      // Placas nas pontas (ao chegar pelo corredor / grade)
+      const endW = tableSize * 0.95;
+      const endA = makeBuffetSign(endW, sideH);
+      endA.position.set(cx, sideY, z0 - 0.02);
+      scene.add(endA);
+      const endB = makeBuffetSign(endW, sideH);
+      endB.position.set(cx, sideY, z1 + 0.02);
+      endB.rotation.y = Math.PI;
+      scene.add(endB);
     }
 
     // Movement — teclado (PC) + joystick/botões (celular)
