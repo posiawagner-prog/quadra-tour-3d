@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Montagem 3D da quadra</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: light-dark(#f4f2ec, #121212);
+      --panel: light-dark(#fff, #1c1c1c);
+      --text: light-dark(#1a1a1a, #eee);
+      --muted: light-dark(#666, #aaa);
+      --border: light-dark(#d0cdc6, #333);
+      --stage: light-dark(#e8e6e1, #1c1c1c);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 4px; font-weight: 600; }
+    .muted { color: var(--muted); font-size: 0.875rem; margin: 0; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; font-size: 0.875rem; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 12px; height: 12px; display: inline-block; border: 1px solid var(--border); }
+    #stage {
+      width: 100%;
+      height: min(70vh, 620px);
+      background: var(--stage);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      touch-action: none;
+      cursor: grab;
+      border-radius: 4px;
+    }
+    canvas { display: block; width: 100%; height: 100%; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: end;
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: 0.875rem; }
+    button {
+      font: inherit;
+      padding: 8px 14px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Montagem 3D da quadra</h1>
+  <p class="muted">Visão geral da montagem · arraste para girar · scroll para zoom</p>
+  <div class="legend" role="list" aria-label="Legenda">
+    <span role="listitem"><i class="swatch" style="background:light-dark(#1a1a1a,#2a2a2a)"></i>Quadra</span>
+    <span role="listitem"><i class="swatch" style="background:light-dark(#c4a574,#8a7048)"></i>Mesas (grupo de 3)</span>
+    <span role="listitem"><i class="swatch" style="background:light-dark(#1e90ff,#4aa3ff)"></i>Telão LED</span>
+    <span role="listitem"><i class="swatch" style="background:light-dark(#6b7280,#9ca3af)"></i>Palco</span>
+    <span role="listitem"><i class="swatch" style="background:light-dark(#b45309,#f59e0b)"></i>Portão</span>
+  </div>
+  <div id="stage" role="img" aria-label="Vista 3D da estrutura da quadra">
+    <canvas id="c" width="900" height="560"></canvas>
+  </div>
+  <div class="controls">
+    <label>Altura das mesas
+      <input id="mesaH" type="range" min="4" max="12" value="7" />
+    </label>
+    <label>Altura do telão
+      <input id="telaoH" type="range" min="20" max="60" value="36" />
+    </label>
+    <button type="button" id="overview">Visão geral</button>
+    <button type="button" id="reset">Vista lateral</button>
+  </div>
+<script>
+(function () {
+  var canvas = document.getElementById("c");
+  var stage = document.getElementById("stage");
+  var ctx = canvas.getContext("2d");
+  var mesaH = 7;
+  var telaoH = 36;
+  var OVERVIEW = { yaw: 0.35, pitch: 1.05, dist: 580, cx: 111, cy: 20, cz: 162 };
+  var SIDE = { yaw: 0.95, pitch: 0.48, dist: 400, cx: 111, cy: 0, cz: 162 };
+  var cam = { yaw: OVERVIEW.yaw, pitch: OVERVIEW.pitch, dist: OVERVIEW.dist, cx: OVERVIEW.cx, cy: OVERVIEW.cy, cz: OVERVIEW.cz };
+  var dragging = false, lastX = 0, lastY = 0;
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var COURT = { x: 8.23, z: 10.22, w: 206.29, d: 303.29 };
+  var STAGE = { x: 98.35, z: 11.53, w: 26.55, d: 29.67, h: 4 };
+  var LED = { x: 62.01, z: 43.17, w: 102.91, d: 5.52 };
+  var GATE = { x: 197.85, z: 312.67, w: 17.07, d: 9.59, h: 18 };
+
+  function group3(xs, z) {
+    return xs.map(function (x) { return { x: x, z: z, w: 7, d: 7 }; });
+  }
+  function rotatedGroups(visualX, zs) {
+    return zs.map(function (z) { return { x: visualX, z: z, w: 7, d: 7 }; });
+  }
+
+  var tables = [];
+  [
+    [26.01, 33.01, 40.01],
+    [55.11, 62.11, 69.11],
+    [84.11, 91.11, 98.11],
+    [113.11, 120.11, 127.11],
+    [142.11, 149.11, 156.11],
+    [171.22, 178.22, 185.22]
+  ].forEach(function (g) { tables = tables.concat(group3(g, 300.458)); });
+  tables = tables.concat(group3([98.16, 105.17, 112.17], 252.61));
+
+  var sideZs = [95.64, 102.64, 109.64, 124.64, 131.64, 138.64, 153.64, 160.64, 167.64, 182.64, 189.64, 196.64, 211.64, 218.64, 225.64, 240.64, 247.64, 254.64, 269.64, 276.64, 283.64];
+  var midLeftZs = [149.45, 156.45, 163.45, 178.45, 185.45, 192.45, 207.45, 214.45, 221.45, 236.45, 243.45, 250.45];
+  var midRightZs = [151.10, 158.10, 165.10, 180.10, 187.10, 194.10, 209.10, 216.10, 223.10, 238.10, 245.10, 252.10];
+  tables = tables.concat(rotatedGroups(16.5, sideZs));
+  tables = tables.concat(rotatedGroups(199.06, sideZs));
+  tables = tables.concat(rotatedGroups(80.82, midLeftZs));
+  tables = tables.concat(rotatedGroups(132.91, midRightZs));
+
+  function project(x, y, z) {
+    var dx = x - cam.cx, dy = y - cam.cy, dz = z - cam.cz;
+    var cosY = Math.cos(cam.yaw), sinY = Math.sin(cam.yaw);
+    var cosP = Math.cos(cam.pitch), sinP = Math.sin(cam.pitch);
+    var x1 = dx * cosY + dz * sinY;
+    var z1 = -dx * sinY + dz * cosY;
+    var y1 = dy * cosP - z1 * sinP;
+    var z2 = dy * sinP + z1 * cosP;
+    var s = 520 / (cam.dist + z2);
+    return {
+      x: (canvas.clientWidth || 900) / 2 + x1 * s,
+      y: (canvas.clientHeight || 560) / 2 - y1 * s,
+      d: z2
+    };
+  }
+
+  function boxFaces(x, y, z, w, h, d) {
+    var p = [
+      [x, y, z], [x + w, y, z], [x + w, y, z + d], [x, y, z + d],
+      [x, y + h, z], [x + w, y + h, z], [x + w, y + h, z + d], [x, y + h, z + d]
+    ];
+    return [
+      { i: [0, 1, 2, 3], shade: 0.55 },
+      { i: [4, 5, 6, 7], shade: 1.0 },
+      { i: [0, 1, 5, 4], shade: 0.75 },
+      { i: [1, 2, 6, 5], shade: 0.85 },
+      { i: [2, 3, 7, 6], shade: 0.65 },
+      { i: [3, 0, 4, 7], shade: 0.7 }
+    ].map(function (face) {
+      var pts = face.i.map(function (idx) {
+        return project(p[idx][0], p[idx][1], p[idx][2]);
+      });
+      var avg = pts.reduce(function (a, pt) { return a + pt.d; }, 0) / pts.length;
+      return { pts: pts, depth: avg, shade: face.shade };
+    });
+  }
+
+  function shadeColor(hex, shade) {
+    var n = parseInt(hex.slice(1), 16);
+    return "rgb(" +
+      Math.round(((n >> 16) & 255) * shade) + "," +
+      Math.round(((n >> 8) & 255) * shade) + "," +
+      Math.round((n & 255) * shade) + ")";
+  }
+
+  function isDark() {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  function pushBox(faces, b, color, topColor) {
+    boxFaces(b.x, b.y, b.z, b.w, b.h, b.d).forEach(function (f) {
+      var base = topColor && f.shade >= 0.98 ? topColor : color;
+      faces.push({ pts: f.pts, depth: f.depth, fill: shadeColor(base, f.shade) });
+    });
+  }
+
+  function draw() {
+    var rect = canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var cssW = Math.max(1, Math.floor(rect.width));
+    var cssH = Math.max(1, Math.floor(rect.height));
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    var dark = isDark();
+    ctx.fillStyle = dark ? "#141414" : "#d9d5cc";
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    var wood = dark ? "#8a7048" : "#c4a574";
+    var woodTop = dark ? "#a88855" : "#d4b896";
+    var faces = [];
+    pushBox(faces, { x: COURT.x - 8, y: -0.4, z: COURT.z - 8, w: COURT.w + 16, h: 0.4, d: COURT.d + 24 }, dark ? "#2a2a2a" : "#cfcabf");
+    pushBox(faces, { x: COURT.x, y: 0, z: COURT.z, w: COURT.w, h: 0.6, d: COURT.d }, dark ? "#222222" : "#1a1a1a");
+    pushBox(faces, { x: STAGE.x, y: 0.6, z: STAGE.z, w: STAGE.w, h: STAGE.h, d: STAGE.d }, dark ? "#9ca3af" : "#6b7280");
+    pushBox(faces, { x: LED.x, y: 0.6, z: LED.z, w: LED.w, h: telaoH, d: LED.d }, dark ? "#4aa3ff" : "#1e90ff");
+    tables.forEach(function (t) {
+      pushBox(faces, { x: t.x, y: 0.6, z: t.z, w: t.w, h: mesaH, d: t.d }, wood, woodTop);
+    });
+    pushBox(faces, { x: GATE.x, y: 0, z: GATE.z, w: GATE.w, h: GATE.h, d: GATE.d }, dark ? "#f59e0b" : "#b45309");
+
+    faces.sort(function (a, b) { return b.depth - a.depth; });
+    faces.forEach(function (f) {
+      ctx.beginPath();
+      ctx.moveTo(f.pts[0].x, f.pts[0].y);
+      for (var i = 1; i < f.pts.length; i++) ctx.lineTo(f.pts[i].x, f.pts[i].y);
+      ctx.closePath();
+      ctx.fillStyle = f.fill;
+      ctx.fill();
+      ctx.strokeStyle = dark ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.18)";
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    });
+
+    ctx.fillStyle = dark ? "#e5e5e5" : "#222";
+    ctx.font = "600 13px system-ui,sans-serif";
+    ctx.textAlign = "center";
+    var gp = project(GATE.x + GATE.w / 2, GATE.h + 4, GATE.z + GATE.d / 2);
+    ctx.fillText("portão", gp.x, gp.y);
+    var lp = project(LED.x + LED.w / 2, telaoH + 6, LED.z);
+    ctx.fillText("telão LED", lp.x, lp.y);
+    var qp = project(COURT.x + COURT.w / 2, 8, COURT.z + COURT.d / 2);
+    ctx.globalAlpha = 0.85;
+    ctx.fillText("quadra", qp.x, qp.y);
+    ctx.globalAlpha = 1;
+  }
+
+  stage.addEventListener("pointerdown", function (e) {
+    dragging = true;
+    stage.style.cursor = "grabbing";
+    lastX = e.clientX;
+    lastY = e.clientY;
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    cam.yaw -= (e.clientX - lastX) * 0.008;
+    cam.pitch = Math.max(0.15, Math.min(1.2, cam.pitch + (e.clientY - lastY) * 0.008));
+    lastX = e.clientX;
+    lastY = e.clientY;
+    draw();
+  });
+  function up() { dragging = false; stage.style.cursor = "grab"; }
+  stage.addEventListener("pointerup", up);
+  stage.addEventListener("pointercancel", up);
+  stage.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    cam.dist = Math.max(220, Math.min(700, cam.dist + e.deltaY * 0.25));
+    draw();
+  }, { passive: false });
+
+  document.getElementById("mesaH").addEventListener("input", function (e) {
+    mesaH = Number(e.target.value); draw();
+  });
+  document.getElementById("telaoH").addEventListener("input", function (e) {
+    telaoH = Number(e.target.value); draw();
+  });
+  function setCam(src) {
+    cam = { yaw: src.yaw, pitch: src.pitch, dist: src.dist, cx: src.cx, cy: src.cy, cz: src.cz };
+    draw();
+  }
+  document.getElementById("overview").addEventListener("click", function () { setCam(OVERVIEW); });
+  document.getElementById("reset").addEventListener("click", function () { setCam(SIDE); });
+  window.addEventListener("resize", draw);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  draw();
+  if (!reduced) {
+    var t0 = null;
+    function intro(ts) {
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / 800);
+      cam.pitch = 0.85 + 0.2 * p;
+      cam.dist = 640 - 60 * p;
+      draw();
+      if (p < 1) requestAnimationFrame(intro);
+    }
+    requestAnimationFrame(intro);
+  }
+})();
+</script>
+</body>
+</html>

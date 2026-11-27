@@ -239,9 +239,10 @@
 
     function startWalkNearEntrance() {
       stopOrbit();
-      // Mesma visão da imagem: altura dos olhos no corredor central, olhando o telão
-      camera.position.set(sx(111), 1.65, sz(230));
-      lookAtPoint(sx(111), 2.35, sz(LED.z + LED.d / 2));
+      // Mesma visão da imagem: fora da grade, olhando o telão através das barras
+      const frontZ = COURT.z + COURT.d + 26;
+      camera.position.set(sx(111), 1.48, sz(frontZ));
+      lookAtPoint(sx(111), 1.2, sz(170));
       setWalking(true);
     }
 
@@ -397,7 +398,7 @@
       const barR = 0.012;
       const railT = 0.028;
       const postT = 0.07;
-      const inset = 0.06;
+      const inset = 0.02;
       const bottomY = 0.08;
       const topY = fenceH;
 
@@ -405,17 +406,13 @@
       const gateRight = sx(GATE.x + GATE.w);
       const gatePad = 0.12;
 
-      // Abertura na grade de trás, no final esquerdo (entrada do buffet)
-      const buffetGatePad = 0.08;
-      const buffetOpenW = 1.2; // ~1,2 m de vão
-
       const barGeo = new THREE.CylinderGeometry(barR, barR, fenceH - bottomY - 0.02, 6);
       const postGeo = new THREE.BoxGeometry(postT, postH, postT);
 
       function addPost(x, z) {
         const p = new THREE.Mesh(postGeo, blackMat);
         p.position.set(x, postH / 2, z);
-        p.castShadow = true;
+        p.castShadow = false;
         scene.add(p);
         // base aparafusada no chão
         const base = new THREE.Mesh(
@@ -423,6 +420,7 @@
           blackMat
         );
         base.position.set(x, 0.015, z);
+        base.castShadow = false;
         scene.add(base);
       }
 
@@ -440,7 +438,7 @@
           blackMat
         );
         rail.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
-        rail.castShadow = true;
+        rail.castShadow = false;
         scene.add(rail);
       }
 
@@ -464,7 +462,7 @@
           } else {
             const bar = new THREE.Mesh(barGeo, blackMat);
             bar.position.set(x, (bottomY + topY) / 2, z);
-            bar.castShadow = true;
+            bar.castShadow = false;
             scene.add(bar);
           }
         }
@@ -475,15 +473,26 @@
       const T = -halfD - inset;
       const B = halfD + inset;
 
-      // Grade de trás com abertura no final esquerdo (ao lado do buffet)
+      // Grade de trás FECHADA atrás do telão; abertura só no canto esquerdo (atrás do buffet)
+      const buffetGatePad = 0.08;
+      const buffetOpenW = 1.2; // ~1,2 m de vão no canto esquerdo
       const buffetOpenRight = L + buffetOpenW;
       fenceRun(buffetOpenRight + buffetGatePad, T, R, T);
-      fenceRun(L, T, L, B);
-      fenceRun(R, T, R, B);
-      fenceRun(L, B, gateLeft - gatePad, B);
-      fenceRun(gateRight + gatePad, B, R, B);
-      // Poste no fim do vão da entrada do buffet
       addPost(buffetOpenRight, T);
+
+      fenceRun(L, T, L, B); // esquerda
+      fenceRun(R, T, R, B); // direita
+
+      // Frente: portão no lugar correto (GATE), sem stub/sobra à direita
+      const frontEnd = gateLeft - gatePad;
+      fenceRun(L, B, frontEnd, B);
+      addPost(frontEnd, B);
+      if (R - (gateRight + gatePad) > 0.35) {
+        fenceRun(gateRight + gatePad, B, R, B);
+        addPost(gateRight + gatePad, B);
+      } else {
+        addPost(R, B);
+      }
     }
 
     // Estrutura do telão — box truss de alumínio (como nas fotos)
@@ -1081,46 +1090,107 @@
       setWalking(true);
 
       const gateCx = GATE.x + GATE.w / 2;
-      // Começa fora, no portão principal, olhando para dentro
-      camera.position.set(sx(gateCx), 1.65, sz(GATE.z + 12));
-      lookAtPoint(sx(111), 1.55, sz(220));
+      // Visão da imagem: ~1,3 m fora da grade, olhando através das barras
+      const imageStartZ = COURT.z + COURT.d + 26;
+      const justInsideZ = COURT.z + COURT.d - 10;
+
+      // 1) Primeiro frame = mesma visão da imagem (segura para reconhecer)
+      camera.position.set(sx(111), 1.48, sz(imageStartZ));
+      lookAtPoint(sx(111), 1.2, sz(170));
+      await sleep(3200);
+
+      // 2) Anda até o portão (ainda por fora) e só então entra
+      await animateCameraTo(155, imageStartZ, 1.5, 140, 200, 1.3, 3000);
+      await sleep(200);
+      await animateCameraTo(gateCx, GATE.z + 14, 1.52, 160, 220, 1.25, 3200);
+      await sleep(300);
+      await animateCameraTo(gateCx, GATE.z + 8, 1.55, 111, 180, 1.45, 2600);
+      await sleep(250);
+      await animateCameraTo(gateCx, justInsideZ, 1.6, 111, 180, 1.5, 3600);
+      await sleep(500);
+
+      // 2) Do portão: lado esquerdo — todas as mesas
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 50, 295, 1.15, 2600);
+      await sleep(300);
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 45, 250, 1.15, 2800);
+      await sleep(250);
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 40, 190, 1.15, 3000);
+      await sleep(250);
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 35, 120, 1.2, 3000);
+      await sleep(250);
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 28, 55, 1.25, 3200);
       await sleep(600);
 
-      // Entra pelo portão principal
-      await animateCameraTo(gateCx, GATE.z - 3, 1.65, 111, 200, 1.5, 4000);
+      // 3) Giro contínuo para a direita mostrando o ambiente inteiro
+      await animateCameraTo(gateCx, justInsideZ, 1.7, 70, 100, 1.8, 2400);
+      await sleep(150);
+      await animateCameraTo(gateCx, justInsideZ, 1.75, 111, LED.z + 6, 2.4, 3200);
+      await sleep(400);
+      await animateCameraTo(gateCx, justInsideZ, 1.7, 160, 120, 1.6, 2600);
+      await sleep(200);
+
+      // 4) Mesas do lado direito da grade
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 199, 280, 1.15, 2800);
+      await sleep(300);
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 199, 220, 1.15, 2800);
+      await sleep(250);
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 199, 160, 1.15, 2800);
+      await sleep(250);
+      await animateCameraTo(gateCx, justInsideZ, 1.65, 199, 120, 1.2, 2600);
+      await sleep(600);
+
+      // 5) Entra e filma como pessoa — corredor central
+      await animateCameraTo(111, 285, 1.65, 111, 160, 1.5, 3600);
+      await sleep(300);
+      await animateCameraTo(111, 250, 1.65, 70, 230, 1.2, 2400);
       await sleep(350);
-      // Segue para o corredor central
-      await animateCameraTo(111, 275, 1.65, 111, 160, 1.5, 3800);
+      await animateCameraTo(111, 250, 1.65, 185, 230, 1.2, 2400);
+      await sleep(350);
+
+      // Corredor entre mesas da esquerda
+      await animateCameraTo(95, 230, 1.65, 70, 180, 1.2, 3200);
+      await sleep(250);
+      await animateCameraTo(95, 180, 1.65, 70, 140, 1.2, 3400);
       await sleep(300);
-      // Avança pelo corredor (mesas dos lados)
-      await animateCameraTo(111, 250, 1.65, 111, 160, 1.5, 3500);
+      await animateCameraTo(95, 180, 1.65, 50, 150, 1.15, 2200);
+      await sleep(350);
+
+      // Cruza ao corredor da direita (lado da grade)
+      await animateCameraTo(111, 170, 1.65, 111, 80, 1.6, 2600);
+      await sleep(200);
+      await animateCameraTo(145, 200, 1.65, 185, 180, 1.2, 3200);
+      await sleep(250);
+      await animateCameraTo(160, 175, 1.65, 199, 150, 1.15, 3200);
+      await sleep(350);
+      await animateCameraTo(160, 140, 1.65, 199, 120, 1.15, 3000);
       await sleep(400);
-      // Olha mesas da esquerda
-      await animateCameraTo(111, 230, 1.65, 70, 210, 1.2, 2200);
+
+      // Volta ao centro e aproxima do telão
+      await animateCameraTo(111, 130, 1.7, 111, LED.z + 2, 2.4, 3800);
       await sleep(500);
-      // Olha mesas da direita
-      await animateCameraTo(111, 230, 1.65, 155, 210, 1.2, 2200);
-      await sleep(400);
-      // Segue em direção ao telão
-      await animateCameraTo(111, 160, 1.65, 111, 50, 2.2, 5000);
-      await sleep(300);
-      // Buffet (lateral esquerda)
-      await animateCameraTo(55, 70, 1.65, 20, 58, 1.15, 4000);
-      await sleep(700);
-      // Aproxima do buffet
-      await animateCameraTo(40, 58, 1.65, 20, 58, 1.2, 2500);
+      await animateCameraTo(111, 95, 1.7, 111, LED.z + 2, 2.5, 3200);
       await sleep(900);
-      // Vai ao telão
-      await animateCameraTo(111, 110, 1.7, 111, LED.z + 2, 2.4, 4500);
-      await sleep(800);
-      // 360° lento no centro, altura de pessoa
-      await animateCameraTo(111, 170, 1.65, 111, 100, 1.5, 2500);
-      await sleep(300);
-      await spinYaw(-Math.PI * 2, 12000);
+
+      // Vai próximo do buffet
+      await animateCameraTo(55, 85, 1.65, 22, 50, 1.2, 3600);
       await sleep(400);
-      // Vista final do telão
-      await animateCameraTo(111, 140, 1.7, 111, LED.z + 2, 2.4, 3500);
-      await sleep(1000);
+      await animateCameraTo(32, 52, 1.65, 18, 35, 1.15, 2800);
+      await sleep(800);
+
+      // Circula entre os espaços das mesas e mostra o entorno
+      await animateCameraTo(80, 150, 1.65, 111, 120, 1.4, 3200);
+      await sleep(250);
+      await animateCameraTo(111, 175, 1.65, 150, 160, 1.3, 2800);
+      await sleep(250);
+      await animateCameraTo(111, 175, 1.65, 70, 160, 1.3, 2800);
+      await sleep(300);
+      await spinYaw(-Math.PI * 2, 10000);
+      await sleep(400);
+
+      // Encerramento no eixo do telão
+      await animateCameraTo(111, 140, 1.7, 111, LED.z + 2, 2.45, 3000);
+      await sleep(1200);
+
       cinematic = false;
       document.body.classList.remove("recording");
     }
@@ -1181,6 +1251,29 @@
         alert("Não foi possível gravar o vídeo neste navegador.");
       });
     });
+
+    // ?record=1 inicia a gravação sozinho (usado pelo script de export)
+    if (new URLSearchParams(location.search).has("record")) {
+      document.body.classList.add("preview");
+      document.getElementById("blocker").style.display = "none";
+      const waitReady = async () => {
+        for (let i = 0; i < 60; i++) {
+          if (typeof window.recordPanoramicTour === "function") break;
+          await sleep(100);
+        }
+        await sleep(800);
+        const size = await recordPanoramicTour();
+        window.__tourRecordDone = true;
+        window.__tourRecordSize = size;
+        document.title = "TOUR_RECORD_DONE:" + (size || 0);
+      };
+      waitReady().catch((err) => {
+        console.error(err);
+        window.__tourRecordDone = true;
+        window.__tourRecordError = String(err);
+        document.title = "TOUR_RECORD_ERROR";
+      });
+    }
 
     // Durante o tour cinematográfico, não mexer com WASD/joystick
     const _origWalkingCheck = () => walking;
