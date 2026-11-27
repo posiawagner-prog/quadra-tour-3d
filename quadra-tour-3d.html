@@ -1079,11 +1079,21 @@
       document.body.classList.add("recording", "preview", "walking");
       document.getElementById("blocker").style.display = "none";
       setWalking(true);
-      camera.position.set(sx(111), 1.65, sz(290));
-      lookAtPoint(sx(111), 1.6, sz(180));
 
-      // Entrada → corredor central (mesas dos lados)
-      await animateCameraTo(111, 250, 1.65, 111, 160, 1.5, 4500);
+      const gateCx = GATE.x + GATE.w / 2;
+      // Começa fora, no portão principal, olhando para dentro
+      camera.position.set(sx(gateCx), 1.65, sz(GATE.z + 12));
+      lookAtPoint(sx(111), 1.55, sz(220));
+      await sleep(600);
+
+      // Entra pelo portão principal
+      await animateCameraTo(gateCx, GATE.z - 3, 1.65, 111, 200, 1.5, 4000);
+      await sleep(350);
+      // Segue para o corredor central
+      await animateCameraTo(111, 275, 1.65, 111, 160, 1.5, 3800);
+      await sleep(300);
+      // Avança pelo corredor (mesas dos lados)
+      await animateCameraTo(111, 250, 1.65, 111, 160, 1.5, 3500);
       await sleep(400);
       // Olha mesas da esquerda
       await animateCameraTo(111, 230, 1.65, 70, 210, 1.2, 2200);
